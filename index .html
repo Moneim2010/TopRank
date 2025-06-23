@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>TopRank</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f3f3f3;
+    }
+    .container {
+      max-width: 700px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #0066cc;
+      text-align: center;
+    }
+    input[type="text"], input[type="number"], input[type="password"] {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    label {
+      display: block;
+      margin-top: 10px;
+    }
+    button {
+      padding: 10px 15px;
+      background: #0066cc;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+      margin-right: 10px;
+    }
+    .actions {
+      margin-top: 20px;
+      text-align: center;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: center;
+    }
+    th {
+      background: #0066cc;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>TopRank</h1>
+
+    <label for="name">Name:</label>
+    <input type="text" id="name" />
+
+    <label for="score">Total Score:</label>
+    <input type="number" id="score" />
+
+    <label for="password">Password:</label>
+    <input type="password" id="password" />
+
+    <label><input type="checkbox" id="hideScore" /> Hide my score</label>
+    <button onclick="submitData()">Submit</button>
+
+    <div class="actions">
+      <button onclick="exportCSV()">📥 تصدير CSV</button>
+    </div>
+
+    <h2>Rankings</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Rank</th>
+          <th>Name</th>
+          <th>Score</th>
+          <th>Edit</th>
+          <th>Delete</th>
+          <th>Message</th>
+        </tr>
+      </thead>
+      <tbody id="rankingBody"></tbody>
+    </table>
+  </div>
+
+  <script>
+    const users = [];
+    let editingIndex = -1;
+
+    function submitData() {
+      const name = document.getElementById("name").value.trim();
+      const score = parseInt(document.getElementById("score").value);
+      const password = document.getElementById("password").value.trim();
+      const hide = document.getElementById("hideScore").checked;
+
+      if (!name || isNaN(score) || !password) {
+        alert("Please enter name, score, and password.");
+        return;
+      }
+
+      const isDuplicatePassword = users.some((u, idx) => u.password === password && idx !== editingIndex);
+      if (isDuplicatePassword) {
+        alert("كلمة السر دي مستخدمة قبل كده! ❌");
+        return;
+      }
+
+      if (editingIndex >= 0) {
+        users[editingIndex] = { name, score: hide ? null : score, password };
+        editingIndex = -1;
+      } else {
+        users.push({ name, score: hide ? null : score, password });
+      }
+
+      document.getElementById("name").value = "";
+      document.getElementById("score").value = "";
+      document.getElementById("password").value = "";
+      document.getElementById("hideScore").checked = false;
+
+      updateRanking();
+    }
+
+    function editUser(index) {
+      const enteredPassword = prompt("ادخل كلمة السر للتعديل:");
+      if (enteredPassword !== users[index].password) {
+        alert("كلمة السر خطأ ❌");
+        return;
+      }
+      const user = users[index];
+      document.getElementById("name").value = user.name;
+      document.getElementById("score").value = user.score ?? "";
+      document.getElementById("password").value = "";
+      document.getElementById("hideScore").checked = user.score === null;
+      editingIndex = index;
+    }
+
+    function deleteUser(index) {
+      const enteredPassword = prompt("ادخل كلمة السر للحذف:");
+      if (enteredPassword !== users[index].password) {
+        alert("كلمة السر خطأ ❌");
+        return;
+      }
+      if (confirm("هل أنت متأكد من الحذف؟")) {
+        users.splice(index, 1);
+        updateRanking();
+      }
+    }
+
+    function updateRanking() {
+      const sorted = [...users].sort((a, b) => (b.score || 0) - (a.score || 0));
+      const tableBody = document.getElementById("rankingBody");
+      tableBody.innerHTML = "";
+
+      let currentRank = 1;
+      let previousScore = null;
+      let skippedRanks = 0;
+
+      const messages = [
+        "🏆 ممتاز جدًا",
+        "🚀 رائع يا نجم",
+        "💪 استمر كده",
+        "🔥 مستوى جامد",
+        "⭐ مشرف",
+        "👏 تطور ملحوظ",
+        "🎯 على الطريق الصح",
+        "📈 استمر في التقدم",
+        "🧠 ذكي وشاطر",
+        "⛳ هدفك قريب"
+      ];
+
+      sorted.forEach((user, index) => {
+        if (user.score === previousScore) {
+          skippedRanks++;
+        } else {
+          currentRank = index + 1 - skippedRanks;
+          skippedRanks = 0;
+        }
+
+        const actualIndex = users.findIndex(u => u === user);
+        const msg = currentRank <= 10 ? messages[currentRank - 1] : "";
+
+        tableBody.innerHTML += `
+          <tr>
+            <td>${currentRank}</td>
+            <td>${user.name}</td>
+            <td>${user.score !== null ? user.score : "--"}</td>
+            <td><button onclick="editUser(${actualIndex})">Edit</button></td>
+            <td><button onclick="deleteUser(${actualIndex})" style="background:red;">Delete</button></td>
+            <td>${msg}</td>
+          </tr>
+        `;
+
+        previousScore = user.score;
+      });
+    }
+
+    function exportCSV() {
+      let csv = "Rank,Name,Score\n";
+      const sorted = [...users].sort((a, b) => (b.score || 0) - (a.score || 0));
+
+      let currentRank = 1;
+      let previousScore = null;
+      let skippedRanks = 0;
+
+      sorted.forEach((user, index) => {
+        if (user.score === previousScore) {
+          skippedRanks++;
+        } else {
+          currentRank = index + 1 - skippedRanks;
+          skippedRanks = 0;
+        }
+
+        csv += `${currentRank},${user.name},${user.score !== null ? user.score : "--"}\n`;
+        previousScore = user.score;
+      });
+
+      const blob = new Blob([csv], { type: "text/csv" });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "toprank.csv";
+      link.click();
+    }
+  </script>
+</body>
+</html>
